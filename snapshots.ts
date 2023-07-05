@@ -21,7 +21,7 @@ async function ensureSnapshotsFolder(workingDir: string) {
 }
 
 async function ensureNotebookSnapshotFolder(workingDir: string, notebook: string) {
-  const notebookName = path.basename(notebook.split('.')[0]);
+  const notebookName = path.basename(notebook).split('.')[0];
   await fs.mkdir(`${workingDir}/.snapshots/${notebookName}`, { recursive: true });
   console.log(`Created a clean ${workingDir}/.snapshots/${notebookName} directory...`);
 }
@@ -37,11 +37,18 @@ async function snapshotOutputs(htmlFile: string) {
   const cellIds: string[] = [];
   for (const cell of cells) {
     const cellId = await cell.evaluate((el) => el.id);
-    const cellOutput = await cell.$$('.jp-OutputArea-output');
+    const cellOutputAreaChildren = await cell.$$('.jp-Cell-outputArea > .jp-OutputArea-child');
 
-    if (cellOutput.length > 0) {
-      for (let i = 0; i < cellOutput.length; i++) {
-        await cellOutput[i].screenshot({
+    if (cellOutputAreaChildren.length > 0) {
+      for (let i = 0; i < cellOutputAreaChildren.length; i++) {
+        const outputArea = await cellOutputAreaChildren[i].$('.jp-OutputArea-output');
+        if (!outputArea) {
+          console.error(
+            `Could not find output area in outputarea-child for cell ${cellId} and output ${i}...`
+          );
+          continue;
+        }
+        await outputArea.screenshot({
           path: htmlFile.replace('.html', `/${cellId.split('=')[1]}_${i}.png`),
           fullPage: false,
         });
@@ -96,6 +103,9 @@ async function main(workingDir: string) {
   console.log('Ran nbconvert on all notebooks...');
 
   // starting puppeteer
+  console.log(' ');
+  console.log('Starting screenshotting...');
+
   for (const { notebook, html } of snapshots) {
     await ensureNotebookSnapshotFolder(workingDir, notebook);
     // TODO be more selective about which cells to snapshot, maybe by scanning the notebook in advance
