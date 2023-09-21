@@ -29,6 +29,7 @@ async function ensureNotebookSnapshotFolder(workingDir: string, notebook: string
 async function snapshotOutputs(htmlFile: string) {
   const browser = await puppeteer.launch({ headless: 'new' });
   const page = await browser.newPage();
+  page.setViewport({ width: 800, height: 600, deviceScaleFactor: 2 });
   await page.goto(`file://${htmlFile}`, { waitUntil: 'networkidle0' });
 
   const cells = await page.$$('.jp-CodeCell');
@@ -70,7 +71,6 @@ async function runNBConvert(
   workingDir: string,
   notebook: string
 ): Promise<{ notebook: string; html: string }> {
-  // run a shell command `jupyter nbconvert --to html --execute --output-dir=.snapshots <notebook>`
   const { stdout, stderr } = await execCmd(
     `jupyter nbconvert --to html --execute --output-dir=${workingDir}/.snapshots ${notebook}`
   );
